@@ -42,7 +42,7 @@
 			let mixer;
 
 			init();
-			animate();
+			animation();
 
 			function init() {
 
@@ -53,6 +53,7 @@
 				camera.position.set( 100, 200, 300 );
 
 				scene = new THREE.Scene();
+
 				scene.background = new THREE.Color( 0xa0a0a0 );
 				scene.fog = new THREE.Fog( 0xa0a0a0, 200, 1000 );
 
@@ -82,18 +83,28 @@
 				grid.material.transparent = true;
 				scene.add( grid );
 
+				// https://github.com/mrdoob/three.js/blob/dev/examples/models/gltf/DamagedHelmet/glTF/DamagedHelmet.gltf
+			
+				
+				// Optional: Provide a DRACOLoader instance to decode compressed mesh data
+				// var dracoLoader = new THREE.DRACOLoader();
+				// dracoLoader.setDecoderPath( '/js/draco/' );
+				// loader.setDRACOLoader( dracoLoader );
 
-				var loader = new GLTFLoader();
-				loader.load( 'https://jcggl.github.io/publicDrive/avatar.glb', function ( gltf )
-				{
-    				avatar = gltf.scene;  // avatar 3D object is loaded
-    				avatar.scale.set(2, 2, 2);
-    				avatar.position.y = 4;
-    				scene.add(avatar);
-				} );
-            
+				// loader.load( 'avatar.glb', function ( gltf )
+				// {
+    			// 	avatar = gltf.scene;  // avatar 3D object is loaded
+    			// 	avatar.scale.set(2, 2, 2);
+    			// 	avatar.position.y = 4;
+    			// 	scene.add(avatar);
+				// } );
 
-
+				// const loader = new GLTFLoader().setPath( 'https://github.com/mrdoob/three.js/blob/dev/examples/models/gltf/DamagedHelmet/glTF/' );
+				// loader.load( 'DamagedHelmet.gltf', function ( gltf ) {
+				// 	scene.add( gltf.scene );
+				// 	render();
+				// } );
+ 
 				renderer = new THREE.WebGLRenderer( { antialias: true } );
 				renderer.setPixelRatio( window.devicePixelRatio );
 				renderer.setSize( window.innerWidth, window.innerHeight );
@@ -123,7 +134,7 @@
 
 			//
 
-			function animate() {
+			function animation() {
 
 				requestAnimationFrame( animate );
 
