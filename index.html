@@ -33,6 +33,7 @@
 
 			import { OrbitControls } from 'https://threejs.org/examples/jsm/controls/OrbitControls.js';
 			import { FBXLoader } from 'https://threejs.org/examples/jsm/loaders/FBXLoader.js';
+			import { GLTFLoader } from 'https://threejs.org/examples/jsm/loaders/GLTFLoader.js';
 
 			let camera, scene, renderer, stats;
 
@@ -81,33 +82,17 @@
 				grid.material.transparent = true;
 				scene.add( grid );
 
-				// model
-                // https://drive.google.com/file/d/1-n-VT2oAttBgyntPVbS9tfD1C309JSeJ/view?usp=sharing
-                // https://drive.google.com/file/d/1QIMgYNvjrAMpcm3szo87hckk_P-L2gne/view?usp=sharing
-                // https://threejs.org/examples/models/fbx/Samba Dancing.fbx
-				// https://jcggl.github.io/publicDrive/HipHopDancing.fbx
-				const loader = new FBXLoader();
-				loader.load( "https://jcggl.github.io/publicDrive/Lyquid_Vroid.fbx", function ( object ) {
 
-					mixer = new THREE.AnimationMixer( object );
-
-					const action = mixer.clipAction( object.animations[ 0 ] );
-					action.play();
-
-					object.traverse( function ( child ) {
-
-						if ( child.isMesh ) {
-
-							child.castShadow = true;
-							child.receiveShadow = true;
-
-						}
-
-					} );
-
-					scene.add( object );
-
+				var loader = new GLTFLoader();
+				loader.load( 'https://jcggl.github.io/publicDrive/avatar.glb', function ( gltf )
+				{
+    				avatar = gltf.scene;  // avatar 3D object is loaded
+    				avatar.scale.set(2, 2, 2);
+    				avatar.position.y = 4;
+    				scene.add(avatar);
 				} );
+            
+
 
 				renderer = new THREE.WebGLRenderer( { antialias: true } );
 				renderer.setPixelRatio( window.devicePixelRatio );
