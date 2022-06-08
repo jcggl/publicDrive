@@ -3,7 +3,7 @@
     <head>
         <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 
-        <title>Babylon.js sample code</title>
+        <title>GGLABS Avatar Chat Sample</title>
 
         <!-- Babylon.js -->
         <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.6.2/dat.gui.min.js"></script>
@@ -81,7 +81,7 @@ BABYLON.DefaultLoadingScreen.prototype.displayLoadingUI = function () {
     }
     this._loadingDiv = document.createElement("div");
     this._loadingDiv.id = "customLoadingScreenDiv";
-    this._loadingDiv.innerHTML = "GGLABS Avatar Chat Demo - Make sure to turn-on WebGPU flag in Chrome/Edge Canary.<BR><BR>The Scene is currently loading..." ;
+    this._loadingDiv.innerHTML = "GGLABS Avatar Chat Demo <BR><BR> Make sure to turn-on WebGPU flag in Chrome/Edge Canary.<BR><BR>The Scene is currently loading..." ;
     var customLoadingScreenCss = document.createElement('style');
     customLoadingScreenCss.innerHTML = `
     #customLoadingScreenDiv{
@@ -102,24 +102,6 @@ BABYLON.DefaultLoadingScreen.prototype.hideLoadingUI = function(){
     console.log("scene is now loaded");
 }
 
-//Set-up WebGPU Snapshot Recording modes
-// const setSnapshotMode = (mode) => {
-//     switch(mode) {
-//         case "disabled":
-//             engine.snapshotRendering = false;
-//             break;
-//         case "standard":
-//             engine.snapshotRenderingMode = BABYLON.Constants.SNAPSHOTRENDERING_STANDARD;
-//             engine.snapshotRendering = true;
-//             break;
-//         case "fast":
-//             engine.snapshotRenderingMode = BABYLON.Constants.SNAPSHOTRENDERING_FAST;
-//             engine.snapshotRendering = true;
-//             break;
-//     }
-// };
-
-
 var delayCreateScene = async function () {
     
     //Display loading screen
@@ -127,14 +109,9 @@ var delayCreateScene = async function () {
 
     // Create a scene and check if the engine is running in WebGPU mode
     const scene = new BABYLON.Scene(engine);
-    const IsWebGPUMode = engine.isWebGPU;
 
     //Ensure all obejects are rendered when switching to Snaphot Fast Mode (even if not all objects are in the camera FOV when switching) 
     scene.skipFrustumClipping = true
-
-    // Get instrumentation data from the Babylon engine
-    const sceneInstrumentation = new BABYLON.SceneInstrumentation(scene);
-    sceneInstrumentation.captureFrameTime = true;
 
     // Set-up an environment texture for PBR
     const hdrTexture = BABYLON.CubeTexture.CreateFromPrefilteredData("textures/environment.dds", scene);
@@ -142,7 +119,6 @@ var delayCreateScene = async function () {
     currentSkybox.isVisible = false;
     // keep IBL intensity low to ensure shadows are visible
     scene.environmentIntensity = 0.2; 
-
 
     //Add lights to have shadows
     const spotLight1 = new BABYLON.SpotLight("spot1", new BABYLON.Vector3(-4, 6, -3), new BABYLON.Vector3(1, -1.5, 1), Math.PI / 2, 10, scene);
@@ -174,11 +150,6 @@ var delayCreateScene = async function () {
         "https://jcggl.github.io/publicDrive/sitting.glb",
         "https://jcggl.github.io/publicDrive/sitting.glb",
         "https://jcggl.github.io/publicDrive/sitting.glb",
-        //"https://thomlucc.github.io/Assets/RoomDemo/Corset.glb",
-        //"https://thomlucc.github.io/Assets/RoomDemo/AntiqueCamera.glb",
-        //"https://thomlucc.github.io/Assets/RoomDemo/BoomBox.glb",
-        //"scenes/BrainStem/BrainStem.gltf",
-        //"https://thomlucc.github.io/Assets/RoomDemo/WickerChair.glb",
     ];
 
     const results = await Promise.all(urls.map(url => BABYLON.SceneLoader.ImportMeshAsync("", url, undefined, scene)));
@@ -213,27 +184,6 @@ var delayCreateScene = async function () {
     fan.addRotation(0, 4*Math.PI/4, 0);
     fan.scaling.scaleInPlace(0.01);
 
-    // const corset = corsetScene.meshes[0];
-    // corset.position.addInPlaceFromFloats(3.59, 0, 2.2);
-    // corset.scaling.scaleInPlace(18);
-    // corset.addRotation(0,-Math.PI/2,0);
-
-    // const antiqueCam = antiqueCamScene.meshes[0];
-    // antiqueCam.position.addInPlaceFromFloats(1.46, 0, 0.02);
-    // antiqueCam.scaling.scaleInPlace(0.15);
-
-    // const boomBox = boomBoxScene.meshes[0];
-    // boomBox.position.addInPlaceFromFloats(-1.48, 0.53, -0.51);
-    // boomBox.scaling.scaleInPlace(10);
-
-    // const robot = robotScene.meshes[0];
-    // robot.position.addInPlaceFromFloats(1.47, 0, 3.01);
-    // robot.scaling.scaleInPlace(0.8);
-    
-    // const wickerChair = wickerScene.meshes[0];
-    // wickerChair.position.addInPlaceFromFloats(2.95, 0, -2.92);
-    // wickerChair.addRotation(0, -Math.PI/4, 0);
-
     const avatar = avatarScene.meshes[0];
     //avatar.position.addInPlaceFromFloats(1.47, 0, 3.01);
     avatar.position.addInPlaceFromFloats(-1.9, 0, -2.0);
@@ -254,11 +204,6 @@ var delayCreateScene = async function () {
     shadowGenerator1.addShadowCaster(sofa, true);
     shadowGenerator1.addShadowCaster(bench, true);
     shadowGenerator1.addShadowCaster(fan, true);
-    // shadowGenerator1.addShadowCaster(corset, true);
-    // shadowGenerator1.addShadowCaster(antiqueCam, true);
-    // shadowGenerator1.addShadowCaster(boomBox, true);
-    // shadowGenerator1.addShadowCaster(robot, true);
-    // shadowGenerator1.addShadowCaster(wickerChair, true);
     shadowGenerator1.addShadowCaster(avatar, true);
     shadowGenerator1.addShadowCaster(avatar1, true);
     shadowGenerator1.addShadowCaster(avatar2, true);
@@ -270,11 +215,6 @@ var delayCreateScene = async function () {
     shadowGenerator1.addShadowCaster(sofa, true);
     shadowGenerator1.addShadowCaster(bench, true);
     shadowGenerator1.addShadowCaster(fan, true);
-    // shadowGenerator1.addShadowCaster(corset, true);
-    // shadowGenerator1.addShadowCaster(antiqueCam, true);
-    // shadowGenerator1.addShadowCaster(boomBox, true);
-    // shadowGenerator1.addShadowCaster(robot, true);
-    // shadowGenerator1.addShadowCaster(wickerChair, true);
     shadowGenerator2.addShadowCaster(avatar, true);
     shadowGenerator2.addShadowCaster(avatar1, true);
     shadowGenerator2.addShadowCaster(avatar2, true);
@@ -285,11 +225,6 @@ var delayCreateScene = async function () {
     shadowGenerator1.addShadowCaster(sofa, true);
     shadowGenerator1.addShadowCaster(bench, true);
     shadowGenerator1.addShadowCaster(fan, true);
-    // shadowGenerator1.addShadowCaster(corset, true);
-    // shadowGenerator1.addShadowCaster(antiqueCam, true);
-    // shadowGenerator1.addShadowCaster(boomBox, true);
-    // shadowGenerator1.addShadowCaster(robot, true);
-    // shadowGenerator1.addShadowCaster(wickerChair, true);
     shadowGenerator3.addShadowCaster(avatar, true);
     shadowGenerator3.addShadowCaster(avatar1, true);
     shadowGenerator3.addShadowCaster(avatar2, true);
@@ -306,19 +241,9 @@ var delayCreateScene = async function () {
     scene.activeCamera.position.set(-4, 1.7, 4); // original
     scene.activeCamera.target = new BABYLON.Vector3(-1, 0, -3);
 
-    // scene.activeCamera.position.set(-1.9, 1, 0.8);  // 3번 시선
-    // scene.activeCamera.target = new BABYLON.Vector3(-1.2, 0.2, -3);
-
-    // scene.activeCamera.position.set(-1.04, 1, -1.7);  // 2번 시선
-    // scene.activeCamera.target = new BABYLON.Vector3(-2, 0, 3);
-
-    // scene.activeCamera.position.set(-1.9, 1, -2.0);  // 1번 시선
-    // scene.activeCamera.target = new BABYLON.Vector3(-1, 0, 3);
-
     scene.activeCamera.fov = Math.PI / 4 * 0.75;
     scene.activeCamera.angularSensibility = 2000;
     scene.activeCamera.speed = 0.05;
-
 
         // GUI
     var advancedTexture = BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI("UI");
