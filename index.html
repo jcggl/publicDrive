@@ -1,154 +1,475 @@
 <!DOCTYPE html>
-<html lang="en">
-	<head>
-		<title>three.js webgl - FBX loader</title>
-		<meta charset="utf-8">
-		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
-		<link type="text/css" rel="stylesheet" href="main.css">
-	</head>
+<html>
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 
-	<body>
-		<!-- <div id="info">
-			<a href="https://threejs.org" target="_blank" rel="noopener">three.js</a> - FBXLoader<br />
-			Character and animation from <a href="https://www.mixamo.com/" target="_blank" rel="noopener">Mixamo</a>
-		</div> -->
+        <title>Babylon.js sample code</title>
 
-		<!-- Import maps polyfill -->
-		<!-- Remove this when import maps will be widely supported -->
-		<script async src="https://unpkg.com/es-module-shims@1.3.6/dist/es-module-shims.js"></script>
+        <!-- Babylon.js -->
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.6.2/dat.gui.min.js"></script>
+        <script src="https://assets.babylonjs.com/generated/Assets.js"></script>
+        <script src="https://preview.babylonjs.com/ammo.js"></script>
+        <script src="https://preview.babylonjs.com/cannon.js"></script>
+        <script src="https://preview.babylonjs.com/Oimo.js"></script>
+        <script src="https://preview.babylonjs.com/earcut.min.js"></script>
+        <script src="https://preview.babylonjs.com/babylon.js"></script>
+        <script src="https://preview.babylonjs.com/materialsLibrary/babylonjs.materials.min.js"></script>
+        <script src="https://preview.babylonjs.com/proceduralTexturesLibrary/babylonjs.proceduralTextures.min.js"></script>
+        <script src="https://preview.babylonjs.com/postProcessesLibrary/babylonjs.postProcess.min.js"></script>
+        <script src="https://preview.babylonjs.com/loaders/babylonjs.loaders.js"></script>
+        <script src="https://preview.babylonjs.com/serializers/babylonjs.serializers.min.js"></script>
+        <script src="https://preview.babylonjs.com/gui/babylon.gui.min.js"></script>
+        <script src="https://preview.babylonjs.com/inspector/babylon.inspector.bundle.js"></script>
 
-		<script type="importmap">
-			{
-				"imports": {
-					"three": "https://threejs.org/build/three.module.js"
-				}
-			}
-		</script>
+        <style>
+            html, body {
+                overflow: hidden;
+                width: 100%;
+                height: 100%;
+                margin: 0;
+                padding: 0;
+            }
 
-		<script type="module">
+            #renderCanvas {
+                width: 100%;
+                height: 100%;
+                touch-action: none;
+            }
+        </style>
+    </head>
+<body>
+    <canvas id="renderCanvas"></canvas>
+    <script>
+        var canvas = document.getElementById("renderCanvas");
 
-			import * as THREE from 'three';
+        var startRenderLoop = function (engine, canvas) {
+            engine.runRenderLoop(function () {
+                if (sceneToRender && sceneToRender.activeCamera) {
+                    sceneToRender.render();
+                }
+            });
+        }
 
-			import Stats from 'https://threejs.org/examples/jsm/libs/stats.module.js';
+        var engine = null;
+        var scene = null;
+        var sceneToRender = null;
+        var createDefaultEngine = function() { return new BABYLON.Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true,  disableWebGL2Support: false}); };
+        /***************************************************
+ * WebGPU and 3D Commerce Room Demo
+ * ************************************************
+ * 
+ * The WebGPU 3D Commerce Room Demo illustrates the use of Snapshot mode in Babylon.js WebGPU engine to boost performances.
+ * 
+ * WebGPU version working (at the moment) on Chrome/Edge Canary desktop with WebGPU flag enabled.
+ *
+ * Documentation on: https://doc.babylonjs.com/advanced_topics/webGPU/webGPUOptimization/webGPUSnapshotRendering
+ *
+ * Assets Credits:
+ * - Sofa, Chair, WickedChair and Lamp models and textures created by Eric Chadwick, Copyright Wayfair LLC, CC-BY 4.0
+ * - Antique Camera model by Maximilian Kamps - Public Domain - Donated by UX3D for glTF testing 
+ * - Corset, Boombox, Fan and Bench - Public Domain - Donated by Microsoft
+ * - Plaster wall and wood floor textures from ambientCG.com - Licensed under CC0 1.0 Universal.
+ */
 
-			import { OrbitControls } from 'https://threejs.org/examples/jsm/controls/OrbitControls.js';
-			import { FBXLoader } from 'https://threejs.org/examples/jsm/loaders/FBXLoader.js';
-			import { GLTFLoader } from 'https://threejs.org/examples/jsm/loaders/GLTFLoader.js';
 
-			let camera, scene, renderer, stats;
+//Create a custom loading screen as the scene is pretty heavy with high poly models
+BABYLON.DefaultLoadingScreen.prototype.displayLoadingUI = function () {
+    if (document.getElementById("customLoadingScreenDiv")) {
+        // Do not add a loading screen if there is already one
+        document.getElementById("customLoadingScreenDiv").style.display = "initial";
+        return;
+    }
+    this._loadingDiv = document.createElement("div");
+    this._loadingDiv.id = "customLoadingScreenDiv";
+    this._loadingDiv.innerHTML = "GGLABS Avatar Chat Demo - Make sure to turn-on WebGPU flag in Chrome/Edge Canary.<BR><BR>The Scene is currently loading..." ;
+    var customLoadingScreenCss = document.createElement('style');
+    customLoadingScreenCss.innerHTML = `
+    #customLoadingScreenDiv{
+        background-color: #BB464Bcc;
+        color: white;
+        font-size:50px;
+        text-align:center;
+    }
+    `;
+    document.getElementsByTagName('head')[0].appendChild(customLoadingScreenCss);
+    this._resizeLoadingUI();
+    window.addEventListener("resize", this._resizeLoadingUI);
+    document.body.appendChild(this._loadingDiv);
+};
 
-			const clock = new THREE.Clock();
+BABYLON.DefaultLoadingScreen.prototype.hideLoadingUI = function(){
+    document.getElementById("customLoadingScreenDiv").style.display = "none";
+    console.log("scene is now loaded");
+}
 
-			let mixer;
+//Set-up WebGPU Snapshot Recording modes
+// const setSnapshotMode = (mode) => {
+//     switch(mode) {
+//         case "disabled":
+//             engine.snapshotRendering = false;
+//             break;
+//         case "standard":
+//             engine.snapshotRenderingMode = BABYLON.Constants.SNAPSHOTRENDERING_STANDARD;
+//             engine.snapshotRendering = true;
+//             break;
+//         case "fast":
+//             engine.snapshotRenderingMode = BABYLON.Constants.SNAPSHOTRENDERING_FAST;
+//             engine.snapshotRendering = true;
+//             break;
+//     }
+// };
 
-			init();
-			animation();
 
-			function init() {
+var delayCreateScene = async function () {
+    
+    //Display loading screen
+    engine.displayLoadingUI();
 
-				const container = document.createElement( 'div' );
-				document.body.appendChild( container );
+    // Create a scene and check if the engine is running in WebGPU mode
+    const scene = new BABYLON.Scene(engine);
+    const IsWebGPUMode = engine.isWebGPU;
 
-				camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 1, 2000 );
-				camera.position.set( 100, 200, 300 );
+    //Ensure all obejects are rendered when switching to Snaphot Fast Mode (even if not all objects are in the camera FOV when switching) 
+    scene.skipFrustumClipping = true
 
-				scene = new THREE.Scene();
+    // Get instrumentation data from the Babylon engine
+    const sceneInstrumentation = new BABYLON.SceneInstrumentation(scene);
+    sceneInstrumentation.captureFrameTime = true;
 
-				scene.background = new THREE.Color( 0xa0a0a0 );
-				scene.fog = new THREE.Fog( 0xa0a0a0, 200, 1000 );
+    // Set-up an environment texture for PBR
+    const hdrTexture = BABYLON.CubeTexture.CreateFromPrefilteredData("textures/environment.dds", scene);
+    const currentSkybox = scene.createDefaultSkybox(hdrTexture, true);
+    currentSkybox.isVisible = false;
+    // keep IBL intensity low to ensure shadows are visible
+    scene.environmentIntensity = 0.2; 
 
-				const hemiLight = new THREE.HemisphereLight( 0xffffff, 0x444444 );
-				hemiLight.position.set( 0, 200, 0 );
-				scene.add( hemiLight );
 
-				const dirLight = new THREE.DirectionalLight( 0xffffff );
-				dirLight.position.set( 0, 200, 100 );
-				dirLight.castShadow = true;
-				dirLight.shadow.camera.top = 180;
-				dirLight.shadow.camera.bottom = - 100;
-				dirLight.shadow.camera.left = - 120;
-				dirLight.shadow.camera.right = 120;
-				scene.add( dirLight );
+    //Add lights to have shadows
+    const spotLight1 = new BABYLON.SpotLight("spot1", new BABYLON.Vector3(-4, 6, -3), new BABYLON.Vector3(1, -1.5, 1), Math.PI / 2, 10, scene);
+    spotLight1.intensity = 150;
+    spotLight1.shadowMinZ = 1;
+    spotLight1.shadowMaxZ = 20;
 
-				// scene.add( new THREE.CameraHelper( dirLight.shadow.camera ) );
+    const spotLight2 = new BABYLON.SpotLight("spot2", new BABYLON.Vector3(3, 6, -3), new BABYLON.Vector3(-1, -1.5, 1), Math.PI / 2, 10, scene);
+    spotLight2.intensity = 150;
+    spotLight2.shadowMinZ = 1;
+    spotLight2.shadowMaxZ = 20;
 
-				// ground
-				const mesh = new THREE.Mesh( new THREE.PlaneGeometry( 2000, 2000 ), new THREE.MeshPhongMaterial( { color: 0x999999, depthWrite: false } ) );
-				mesh.rotation.x = - Math.PI / 2;
-				mesh.receiveShadow = true;
-				scene.add( mesh );
+    const spotLight3 = new BABYLON.SpotLight("spot3", new BABYLON.Vector3(3, 6, 3), new BABYLON.Vector3(-0.3, -1.5, 0), Math.PI / 2, 10, scene);
+    spotLight3.intensity = 100;
+    spotLight3.shadowMinZ = 1;
+    spotLight3.shadowMaxZ = 20;
 
-				const grid = new THREE.GridHelper( 2000, 20, 0x000000, 0x000000 );
-				grid.material.opacity = 0.2;
-				grid.material.transparent = true;
-				scene.add( grid );
+    const lampLight = new BABYLON.PointLight("lampLight", new BABYLON.Vector3(-2.49, 0.91, -0.47), scene);
+    lampLight.intensity = 1
 
-				// https://github.com/mrdoob/three.js/blob/dev/examples/models/gltf/DamagedHelmet/glTF/DamagedHelmet.gltf
-			
-				
-				// Optional: Provide a DRACOLoader instance to decode compressed mesh data
-				// var dracoLoader = new THREE.DRACOLoader();
-				// dracoLoader.setDecoderPath( '/js/draco/' );
-				// loader.setDRACOLoader( dracoLoader );
+    // Load glTF models and position them on the scene
+    const urls = [
+        "https://thomlucc.github.io/Assets/RoomDemo/LivingRoomModel18.glb",
+        "https://thomlucc.github.io/Assets/RoomDemo/sofa.glb",
+        "https://thomlucc.github.io/Assets/RoomDemo/SheenChair.glb",
+        "https://thomlucc.github.io/Assets/RoomDemo/Lamp.glb",
+        "https://thomlucc.github.io/Assets/RoomDemo/benchMaterials_1024x2048.glb",
+        "https://models.babylonjs.com/vintageDeskFan/vintageFan_animated.gltf",
+        "https://jcggl.github.io/publicDrive/sitting.glb",
+        "https://jcggl.github.io/publicDrive/sitting.glb",
+        "https://jcggl.github.io/publicDrive/sitting.glb",
+        //"https://thomlucc.github.io/Assets/RoomDemo/Corset.glb",
+        //"https://thomlucc.github.io/Assets/RoomDemo/AntiqueCamera.glb",
+        //"https://thomlucc.github.io/Assets/RoomDemo/BoomBox.glb",
+        //"scenes/BrainStem/BrainStem.gltf",
+        //"https://thomlucc.github.io/Assets/RoomDemo/WickerChair.glb",
+    ];
 
-				// loader.load( 'avatar.glb', function ( gltf )
-				// {
-    			// 	avatar = gltf.scene;  // avatar 3D object is loaded
-    			// 	avatar.scale.set(2, 2, 2);
-    			// 	avatar.position.y = 4;
-    			// 	scene.add(avatar);
-				// } );
+    const results = await Promise.all(urls.map(url => BABYLON.SceneLoader.ImportMeshAsync("", url, undefined, scene)));
+    const [livingRoomScene, sofaScene, chairScene, lampScene, benchScene, fanScene, avatarScene, avatarScene1, avatarScene2] = results; //, corsetScene, antiqueCamScene, boomBoxScene, robotScene, wickerScene
 
-				// const loader = new GLTFLoader().setPath( 'https://github.com/mrdoob/three.js/blob/dev/examples/models/gltf/DamagedHelmet/glTF/' );
-				// loader.load( 'DamagedHelmet.gltf', function ( gltf ) {
-				// 	scene.add( gltf.scene );
-				// 	render();
-				// } );
- 
-				renderer = new THREE.WebGLRenderer( { antialias: true } );
-				renderer.setPixelRatio( window.devicePixelRatio );
-				renderer.setSize( window.innerWidth, window.innerHeight );
-				renderer.shadowMap.enabled = true;
-				container.appendChild( renderer.domElement );
+    const floor = scene.getMeshByName("floor");
 
-				const controls = new OrbitControls( camera, renderer.domElement );
-				controls.target.set( 0, 100, 0 );
-				controls.update();
+    const sofa = sofaScene.meshes[0];
+    sofa.position.addInPlaceFromFloats(-1.74, 0, -2);
+    // const sofaSceneLight = scene.getLightByName("Key Light");
+    // sofaSceneLight.setEnabled(false);
 
-				window.addEventListener( 'resize', onWindowResize );
+    const chair = chairScene.meshes[0];
+    chair.position.addInPlaceFromFloats(-1.74, 0, 0.9);
+    chair.addRotation(0, 4*Math.PI/4, 0);
+    //The chair model has 2 variants, pick up the blue variant
+    var chairVariants = [];
+    chairVariants = BABYLON.GLTF2.Loader.Extensions.KHR_materials_variants.GetAvailableVariants(chair);
+    BABYLON.GLTF2.Loader.Extensions.KHR_materials_variants.SelectVariant(chair, chairVariants[1])
 
-				// stats
-				stats = new Stats();
-				container.appendChild( stats.dom );
+    const lamp = lampScene.meshes[0];
+    lamp.position.addInPlaceFromFloats(-2.46, 0.43, -0.49);
 
-			}
+    const bench = benchScene.meshes[0];
+    bench.position.addInPlaceFromFloats(-1.68, 0, -0.6);
+    bench.scaling.scaleInPlace(0.01);
+    bench.addRotation(0,Math.PI,0);
+    const benchTop = scene.getMeshByName("benchMultimat_low");
 
-			function onWindowResize() {
+    const fan = fanScene.meshes[0];
+    fan.position.addInPlaceFromFloats(-1.06, 0.43, -0.59);
+    fan.addRotation(0, 4*Math.PI/4, 0);
+    fan.scaling.scaleInPlace(0.01);
 
-				camera.aspect = window.innerWidth / window.innerHeight;
-				camera.updateProjectionMatrix();
+    // const corset = corsetScene.meshes[0];
+    // corset.position.addInPlaceFromFloats(3.59, 0, 2.2);
+    // corset.scaling.scaleInPlace(18);
+    // corset.addRotation(0,-Math.PI/2,0);
 
-				renderer.setSize( window.innerWidth, window.innerHeight );
+    // const antiqueCam = antiqueCamScene.meshes[0];
+    // antiqueCam.position.addInPlaceFromFloats(1.46, 0, 0.02);
+    // antiqueCam.scaling.scaleInPlace(0.15);
 
-			}
+    // const boomBox = boomBoxScene.meshes[0];
+    // boomBox.position.addInPlaceFromFloats(-1.48, 0.53, -0.51);
+    // boomBox.scaling.scaleInPlace(10);
 
-			//
+    // const robot = robotScene.meshes[0];
+    // robot.position.addInPlaceFromFloats(1.47, 0, 3.01);
+    // robot.scaling.scaleInPlace(0.8);
+    
+    // const wickerChair = wickerScene.meshes[0];
+    // wickerChair.position.addInPlaceFromFloats(2.95, 0, -2.92);
+    // wickerChair.addRotation(0, -Math.PI/4, 0);
 
-			function animation() {
+    const avatar = avatarScene.meshes[0];
+    //avatar.position.addInPlaceFromFloats(1.47, 0, 3.01);
+    avatar.position.addInPlaceFromFloats(-1.9, 0, -2.0);
+    avatar.scaling.scaleInPlace(0.8);
 
-				requestAnimationFrame( animate );
+    const avatar1 = avatarScene1.meshes[0];
+    avatar1.position.addInPlaceFromFloats(-1.04, 0, -1.7);
+    avatar1.scaling.scaleInPlace(0.8);
 
-				const delta = clock.getDelta();
+    const avatar2 = avatarScene2.meshes[0];
+    avatar2.position.addInPlaceFromFloats(-1.7, -0.05, 0.8);
+    avatar2.addRotation(0, 4*Math.PI/4, 0);
+    avatar2.scaling.scaleInPlace(0.8);
 
-				if ( mixer ) mixer.update( delta );
+    //Add Shadows
+    const shadowGenerator1 = new BABYLON.ShadowGenerator(1024, spotLight1);
+    shadowGenerator1.addShadowCaster(chair, true);
+    shadowGenerator1.addShadowCaster(sofa, true);
+    shadowGenerator1.addShadowCaster(bench, true);
+    shadowGenerator1.addShadowCaster(fan, true);
+    // shadowGenerator1.addShadowCaster(corset, true);
+    // shadowGenerator1.addShadowCaster(antiqueCam, true);
+    // shadowGenerator1.addShadowCaster(boomBox, true);
+    // shadowGenerator1.addShadowCaster(robot, true);
+    // shadowGenerator1.addShadowCaster(wickerChair, true);
+    shadowGenerator1.addShadowCaster(avatar, true);
+    shadowGenerator1.addShadowCaster(avatar1, true);
+    shadowGenerator1.addShadowCaster(avatar2, true);
+    shadowGenerator1.usePercentageCloserFiltering = true;
+    shadowGenerator1.bias = 0.0014
 
-				renderer.render( scene, camera );
+    const shadowGenerator2 = new BABYLON.ShadowGenerator(1024, spotLight2);
+    shadowGenerator1.addShadowCaster(chair, true);
+    shadowGenerator1.addShadowCaster(sofa, true);
+    shadowGenerator1.addShadowCaster(bench, true);
+    shadowGenerator1.addShadowCaster(fan, true);
+    // shadowGenerator1.addShadowCaster(corset, true);
+    // shadowGenerator1.addShadowCaster(antiqueCam, true);
+    // shadowGenerator1.addShadowCaster(boomBox, true);
+    // shadowGenerator1.addShadowCaster(robot, true);
+    // shadowGenerator1.addShadowCaster(wickerChair, true);
+    shadowGenerator2.addShadowCaster(avatar, true);
+    shadowGenerator2.addShadowCaster(avatar1, true);
+    shadowGenerator2.addShadowCaster(avatar2, true);
+    shadowGenerator2.usePercentageCloserFiltering = true;
 
-				stats.update();
+    const shadowGenerator3 = new BABYLON.ShadowGenerator(1024, spotLight3);
+    shadowGenerator1.addShadowCaster(chair, true);
+    shadowGenerator1.addShadowCaster(sofa, true);
+    shadowGenerator1.addShadowCaster(bench, true);
+    shadowGenerator1.addShadowCaster(fan, true);
+    // shadowGenerator1.addShadowCaster(corset, true);
+    // shadowGenerator1.addShadowCaster(antiqueCam, true);
+    // shadowGenerator1.addShadowCaster(boomBox, true);
+    // shadowGenerator1.addShadowCaster(robot, true);
+    // shadowGenerator1.addShadowCaster(wickerChair, true);
+    shadowGenerator3.addShadowCaster(avatar, true);
+    shadowGenerator3.addShadowCaster(avatar1, true);
+    shadowGenerator3.addShadowCaster(avatar2, true);
+    shadowGenerator3.usePercentageCloserFiltering = true;
 
-			}
+    floor.receiveShadows = true;
+    benchTop.receiveShadows = true;
 
-		</script>
+    //default camera
+    scene.createDefaultCamera(false);
+    scene.activeCamera.attachControl(canvas, false);
+    scene.activeCamera.minZ = 0.25;
+    scene.activeCamera.maxZ = 250;
+    scene.activeCamera.position.set(-4, 1.7, 4); // original
+    scene.activeCamera.target = new BABYLON.Vector3(-1, 0, -3);
 
-	</body>
+    // scene.activeCamera.position.set(-1.9, 1, 0.8);  // 3번 시선
+    // scene.activeCamera.target = new BABYLON.Vector3(-1.2, 0.2, -3);
+
+    // scene.activeCamera.position.set(-1.04, 1, -1.7);  // 2번 시선
+    // scene.activeCamera.target = new BABYLON.Vector3(-2, 0, 3);
+
+    // scene.activeCamera.position.set(-1.9, 1, -2.0);  // 1번 시선
+    // scene.activeCamera.target = new BABYLON.Vector3(-1, 0, 3);
+
+    scene.activeCamera.fov = Math.PI / 4 * 0.75;
+    scene.activeCamera.angularSensibility = 2000;
+    scene.activeCamera.speed = 0.05;
+
+
+        // GUI
+    var advancedTexture = BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI("UI");
+    var button = BABYLON.GUI.Button.CreateSimpleButton("but", "1st View");
+    button.width = 0.2;
+    button.height = "40px";
+    button.color = "white";
+    button.background = new BABYLON.Color3(0.07, 0.58, 0.24).toHexString();
+    advancedTexture.addControl(button);
+
+    button.onPointerClickObservable.add(() => {
+        scene.activeCamera.position.set(-1.9, 1, -2.0);  // 1번 시선
+        scene.activeCamera.target = new BABYLON.Vector3(-1, 0, 3);
+    });
+
+    var button1 = BABYLON.GUI.Button.CreateSimpleButton("but1", "2nd View");
+    button1.top = "50px";
+    button1.width = 0.2;
+    button1.height = "40px";
+    button1.color = "white";
+    button1.background = new BABYLON.Color3(0.07, 0.58, 0.24).toHexString();
+    
+    advancedTexture.addControl(button1);
+
+    button1.onPointerClickObservable.add(() => {
+        scene.activeCamera.position.set(-1.04, 1, -1.7);  // 2번 시선
+        scene.activeCamera.target = new BABYLON.Vector3(-2, 0, 3);
+    });
+
+    var button2 = BABYLON.GUI.Button.CreateSimpleButton("but2", "3rd View");
+    button2.top = "100px";
+    button2.width = 0.2;
+    button2.height = "40px";
+    button2.color = "white";
+    button2.background = new BABYLON.Color3(0.07, 0.58, 0.24).toHexString();
+    
+    advancedTexture.addControl(button2);
+
+    button2.onPointerClickObservable.add(() => {
+        scene.activeCamera.position.set(-1.9, 1, 0.8);  // 3번 시선
+        scene.activeCamera.target = new BABYLON.Vector3(-1.2, 0.2, -3);
+    });
+
+    var button3 = BABYLON.GUI.Button.CreateSimpleButton("but3", "Out View");
+    button3.top = "150px";
+    button3.width = 0.2;
+    button3.height = "40px";
+    button3.color = "white";
+    button3.background = new BABYLON.Color3(0.07, 0.58, 0.24).toHexString();
+    
+    advancedTexture.addControl(button3);
+
+    button3.onPointerClickObservable.add(() => {
+        scene.activeCamera.position.set(-4, 1.7, 4); // original
+        scene.activeCamera.target = new BABYLON.Vector3(-1, 0, -3);
+    });
+
+    return new Promise((resolve) => {
+        scene.executeWhenReady(() => {
+            engine.snapshotRendering = false;
+            scene.onBeforeRenderObservable.add(() => {
+                scene.skeletons.forEach((skeleton) => skeleton.prepare());
+            });
+            resolve(scene);
+            //Hide loading screen
+            engine.hideLoadingUI();
+            //Load gui
+            // const gui = makeGUI(IsWebGPUMode, scene, sceneInstrumentation);
+        });
+        
+    });
+    
+};
+
+
+// function makeGUI(IsWebGPUMode, scene, sceneInstrumentation) {
+//     const oldgui = document.getElementById("datGUI");
+// 	if (oldgui){
+// 		oldgui.remove();
+// 	}
+
+//     const gui = new dat.GUI();
+// 	gui.domElement.id = "datGUI";
+
+//     this._options = {
+//         "global_snapshotmode": "disabled",
+//         "statistics_frametotal": "0 ms",
+//         "statistics_virtualfps": "0 fps",
+//     };
+
+//     gui.domElement.style.marginTop = "100px";
+
+//     // Global
+//     if (IsWebGPUMode){
+//         const global = gui.addFolder("Global");
+
+//         global.add(this._options, "global_snapshotmode", ["disabled", "standard", "fast"])
+//             .name("Snapshot mode")
+//             .onChange((value) => {
+//                 setSnapshotMode(value);
+//             });
+
+//         global.open();
+//     }
+
+//     // Statistics
+//     const statistics = gui.addFolder("Statistics");
+
+//     const frameTotalCtrl = statistics.add(this._options, "statistics_frametotal")
+//         .name("Frame total");
+
+//     frameTotalCtrl.domElement.children[0].readOnly = true;
+
+//     const virtualFpsCtrl = statistics.add(this._options, "statistics_virtualfps")
+//         .name("Virtual fps");
+
+//     virtualFpsCtrl.domElement.children[0].readOnly = true;
+
+//     scene.onAfterRenderObservable.add(() => {
+//         frameTotalCtrl.__input.value = sceneInstrumentation.frameTimeCounter.lastSecAverage.toFixed(2) + " ms";
+//         virtualFpsCtrl.__input.value = (1000 / sceneInstrumentation.frameTimeCounter.lastSecAverage).toFixed(0) + " fps";
+//     });
+
+//     statistics.open();
+
+//     return this._options;
+// }
+                window.initFunction = async function() {
+                    
+                    
+                    var asyncEngineCreation = async function() {
+                        try {
+                        return createDefaultEngine();
+                        } catch(e) {
+                        console.log("the available createEngine function failed. Creating the default engine instead");
+                        return createDefaultEngine();
+                        }
+                    }
+
+                    window.engine = await asyncEngineCreation();
+        if (!engine) throw 'engine should not be null.';
+        startRenderLoop(engine, canvas);
+        window.scene = delayCreateScene();};
+        initFunction().then(() => {scene.then(returnedScene => { sceneToRender = returnedScene; });
+                            
+        });
+
+        // Resize
+        window.addEventListener("resize", function () {
+            engine.resize();
+        });
+    </script>
+</body>
 </html>
